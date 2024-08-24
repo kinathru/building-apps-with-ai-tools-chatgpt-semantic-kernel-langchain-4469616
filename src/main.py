@@ -1,4 +1,7 @@
-from langchain.chat_models import ChatOpenAI
+import os
+
+from dotenv import load_dotenv
+from langchain_openai import ChatOpenAI
 from langchain.prompts.chat import (
     ChatPromptTemplate,
     SystemMessagePromptTemplate,
@@ -8,7 +11,7 @@ from langchain.chains import LLMChain
 from langchain.schema import BaseOutputParser
 
 
-def generate_travel_recommendations(travel_requests):
+def generate_travel_recommendations(in_travel_requests):
     """
     Generate travel recommendations based on user requests
     """
@@ -25,24 +28,20 @@ def generate_travel_recommendations(travel_requests):
     chat_prompt = ChatPromptTemplate.from_messages(
         [system_message_prompt, human_message_prompt])
 
-    chain = LLMChain(
-        llm=ChatOpenAI(temperature=1),
-        prompt=chat_prompt
-    )
+    chain = chat_prompt | ChatOpenAI(temperature=1)
 
-    recommendations = []
-    for travel_request in travel_requests:
-        recommendations.append(chain.run(travel_request))
+    gen_recommendations = []
+    for travel_request in in_travel_requests:
+        gen_recommendations.append(chain.invoke(travel_request))
 
-    return recommendations
+    return gen_recommendations
 
 
 def generate_travel_requests(n=5) -> list[str]:
     """ Generate travel requests
     n: number of requests
     """
-    # TODO 1 add prompt
-    system_template_travel_agent = """"""
+    system_template_travel_agent = """Generate one utterance for how someone would travel for a {text}"""
     system_message_prompt = SystemMessagePromptTemplate.from_template(
         system_template_travel_agent)
 
@@ -50,20 +49,27 @@ def generate_travel_requests(n=5) -> list[str]:
     chat_prompt = ChatPromptTemplate.from_messages(
         [system_message_prompt])
 
-    chain = LLMChain(
-        llm=ChatOpenAI(model='gpt-4'),
-        prompt=chat_prompt
-    )
-    # TODO 2 return results
+    chain = chat_prompt | ChatOpenAI(model='gpt-4')
+
+    results = []
+    for _ in range(0, n):
+        results.append(chain.invoke("beach vacation"))
+
     return results
 
 
+# Load the .env file
+load_dotenv()
+
+user_api_key = os.getenv('OPENAI_API_KEY')
 # generate some requests
-# travel_requests = generate_travel_requests()
-travel_requests = ["I want a beach vacation"]
-# print(travel_requests)
+travel_requests = generate_travel_requests()
+# travel_requests = ["I want a beach vacation"]
+print("Travel Requests : \n")
+print(travel_requests)
+print("\n")
+
 # get the recommendations
-
-
 recommendations = generate_travel_recommendations(travel_requests)
+print("Travel Recommendations : \n")
 print(recommendations)
