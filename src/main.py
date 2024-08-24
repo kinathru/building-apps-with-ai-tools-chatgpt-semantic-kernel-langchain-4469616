@@ -1,9 +1,15 @@
-import openai
+import os
+
 import numpy as np
-from langchain.chat_models import ChatOpenAI
-from langchain.chains import LLMChain
-from langchain.schema import BaseOutputParser
+from dotenv import load_dotenv
 from langchain.evaluation import QAEvalChain
+from langchain_openai import ChatOpenAI
+from openai import OpenAI
+
+# Load the .env file
+load_dotenv()
+
+user_api_key = os.getenv('OPENAI_API_KEY')
 
 question_answers = [
     {'question': "When was tea discovered?",
@@ -16,25 +22,24 @@ predictions = []
 responses = []
 for pairs in question_answers:
     q = pairs["question"]
-    response = llm.predict(
-        f"Generate the response to the question: {q}. Only print the answer.")
-    responses.append(response)
-    predictions.append({"result": {response}})
+    response = llm.invoke(f"Generate the response to the question: {q}. Only print the answer.")
+    responses.append(response.content)
+    predictions.append({"result": {response.content}})
 
-print("\nGenerating text matchs:")
+print("\nGenerating text matches:")
 
 for i in range(0, len(responses)):
-    print(question_answers[i]["answer"] == response[i])
+    print(question_answers[i]["answer"] == responses[i])
 
-
-resp = openai.Embedding.create(
+client = OpenAI()
+resp = client.embeddings.create(
     input=[r["answer"] for r in question_answers] + responses,
-    engine="text-embedding-ada-002")
+    model="text-embedding-ada-002")
 
 print("\nGenerating Similarity Score:!")
 for i in range(0, len(question_answers)*2, 2):
-    embedding_a = resp['data'][i]['embedding']
-    embedding_b = resp['data'][len(question_answers)]['embedding']
+    embedding_a = resp.data[i].embedding
+    embedding_b = resp.data[len(question_answers)].embedding
     similarity_score = np.dot(embedding_a, embedding_b)
     print(similarity_score, similarity_score > 0.8)
 
