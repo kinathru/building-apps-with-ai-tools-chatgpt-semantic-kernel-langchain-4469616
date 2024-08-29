@@ -1,4 +1,5 @@
-from langchain.chat_models import ChatOpenAI
+import os
+from langchain_openai import ChatOpenAI
 from langchain.prompts.chat import (
     ChatPromptTemplate,
     SystemMessagePromptTemplate,
@@ -6,6 +7,7 @@ from langchain.prompts.chat import (
 )
 from langchain.chains import LLMChain
 from langchain.evaluation import QAEvalChain
+from dotenv import load_dotenv
 
 
 def generate_book_recommendations(book_requests):
@@ -25,14 +27,12 @@ def generate_book_recommendations(book_requests):
     chat_prompt = ChatPromptTemplate.from_messages(
         [system_message_prompt, human_message_prompt])
 
-    chain = LLMChain(
-        llm=ChatOpenAI(temperature=1),
-        prompt=chat_prompt
-    )
+    chain = chat_prompt | ChatOpenAI(temperature=1)
 
     recommendations = []
     for book_request in book_requests:
-        recommendations.append(chain.run(book_request))
+        invoke_res = chain.invoke(book_request)
+        recommendations.append(invoke_res.content)
 
     return recommendations
 
@@ -50,18 +50,21 @@ def generate_book_requests(n=5) -> list[str]:
     chat_prompt = ChatPromptTemplate.from_messages(
         [system_message_prompt])
 
-    chain = LLMChain(
-        llm=ChatOpenAI(model='gpt-4'),
-        prompt=chat_prompt
-    )
+    chain = chat_prompt | ChatOpenAI(model='gpt-4')
 
     results = []
 
     for _ in range(0, n):
-        results.append(chain.run("book"))
+        invoke_result = chain.invoke("book")
+        results.append(invoke_result.content)
 
     return results
 
+
+# Load the .env file
+load_dotenv()
+
+user_api_key = os.getenv('OPENAI_API_KEY')
 
 # generate some requests
 book_requests = generate_book_requests()
@@ -74,7 +77,6 @@ recommendations = generate_book_recommendations(book_requests)
 print("\n\n".join(recommendations))
 print("\n")
 
-
 llm = ChatOpenAI(model="gpt-4")
 predictions = []
 question_answers = []
@@ -83,9 +85,9 @@ for i in range(0, len(recommendations)):
     q = book_requests[i]
     a = recommendations[i]
     question_answers.append({"question": q, "answer": a})
-    response = llm.predict(
+    response = llm.invoke(
         f"Generate the response to the question: {q}. Only print the answer.")
-    predictions.append({"result": {response}})
+    predictions.append({"result": {response.content}})
 
 print("\nGenerating Self eval:")
 
